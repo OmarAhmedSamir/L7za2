@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NOW - Instant Viewer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #09090b;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      max-height: 932px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* Top Bar */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 5px;
+      z-index: 10;
+    }
+
+    .brand {
+      font-weight: 900;
+      letter-spacing: 2px;
+      font-size: 1.4rem;
+    }
+
+    .counter {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: #a1a1aa;
+    }
+
+    /* Card Deck Container */
+    .deck {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Individual Card */
+    .card {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      background-color: #18181b;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      touch-action: none;
+      cursor: grab;
+      will-change: transform, opacity;
+      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    }
+
+    .card:active {
+      cursor: grabbing;
+    }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    /* Card Overlay Info */
+    .card-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 24px;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #27272a;
+      border: 2px solid #ffffff;
+      object-fit: cover;
+    }
+
+    .username {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .time-ago {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+    }
+
+    .caption {
+      font-size: 0.95rem;
+      color: #e4e4e7;
+      line-height: 1.4;
+    }
+
+    /* Like Button on Card */
+    .like-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      cursor: pointer;
+      z-index: 5;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .like-btn.active {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #ef4444;
+    }
+
+    /* Swipe Indicator Hint */
+    .swipe-hint {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #71717a;
+      padding: 10px 0;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #71717a;
+      text-align: center;
+    }
+
+    .empty-state span {
+      font-size: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <div class="header">
+      <div class="brand">NOW</div>
+      <div class="counter" id="counter">3 Instants</div>
+    </div>
+
+    <!-- Deck Container -->
+    <div class="deck" id="deck">
+      <div class="empty-state" id="empty-state">
+        <span>👋</span>
+        <p>خلصت كل الـ Instants الجديدة!</p>
+      </div>
+    </div>
+
+    <div class="swipe-hint">اسحب الكارت لليمين للمتابعة 👉</div>
+  </div>
+
+  <script>
+    // بيانات تجريبية (سيتم جلبها مستقبلاً من Supabase)
+    const mockInstants = [
+      {
+        id: '1',
+        username: 'عمر سمير',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80',
+        caption: 'تمرينة الظهر النهاردة 🔥',
+        time: 'منذ دقيقتين'
+      },
+      {
+        id: '2',
+        username: 'أحمد خالد',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop&q=80',
+        caption: 'القهوة الصباحية ☕',
+        time: 'منذ 15 دقيقة'
+      },
+      {
+        id: '3',
+        username: 'سارة علي',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+        image: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=80',
+        caption: 'منظر الغروب عجيب!',
+        time: 'منذ ساعة'
+      }
+    ];
+
+    const deck = document.getElementById('deck');
+    const counter = document.getElementById('counter');
+    const emptyState = document.getElementById('empty-state');
+
+    // 1. إنشاء وتكديس الكروت (Card Stacking Logic)
+    function renderDeck(data) {
+      data.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.classList.add('card');
+        card.dataset.id = item.id;
+
+        card.innerHTML = `
+          <button class="like-btn" onclick="toggleLike(event, '${item.id}')">🤍</button>
+          <img src="${item.image}" alt="Instant" />
+          <div class="card-info">
+            <div class="user-badge">
+              <img class="avatar" src="${item.avatar}" alt="${item.username}" />
+              <div>
+                <div class="username">${item.username}</div>
+                <div class="time-ago">${item.time}</div>
+              </div>
+            </div>
+            ${item.caption ? `<div class="caption">${item.caption}</div>` : ''}
+          </div>
+        `;
+
+        deck.appendChild(card);
+        setupSwipeEvents(card);
+      });
+
+      updateStackStyles();
+    }
+
+    // 2. تحديث المظهر البصري لعمق التكديس (Scale & Translate Offset)
+    function updateStackStyles() {
+      const cards = Array.from(deck.querySelectorAll('.card:not(.swiping-out)'));
+      
+      cards.forEach((card, index) => {
+        // ترتيب الكروت: الكارت الأخير في العناصر هو الأعلى (Top Card)
+        const reverseIndex = cards.length - 1 - index;
+        
+        if (reverseIndex === 0) {
+          // Top Card
+          card.style.transform = 'translate3d(0, 0, 0) scale(1)';
+          card.style.zIndex = '10';
+          card.style.opacity = '1';
+          card.style.pointerEvents = 'auto';
+        } else if (reverseIndex === 1) {
+          // Second Card
+          card.style.transform = 'translate3d(0, 14px, 0) scale(0.95)';
+          card.style.zIndex = '9';
+          card.style.opacity = '0.85';
+          card.style.pointerEvents = 'none';
+        } else if (reverseIndex === 2) {
+          // Third Card
+          card.style.transform = 'translate3d(0, 28px, 0) scale(0.90)';
+          card.style.zIndex = '8';
+          card.style.opacity = '0.6';
+          card.style.pointerEvents = 'none';
+        } else {
+          // Hidden deeper cards
+          card.style.transform = 'translate3d(0, 40px, 0) scale(0.85)';
+          card.style.zIndex = '1';
+          card.style.opacity = '0';
+          card.style.pointerEvents = 'none';
+        }
+      });
+
+      // تحديث العداد
+      counter.textContent = `${cards.length} Instants`;
+      if (cards.length === 0) {
+        emptyState.style.display = 'flex';
+      }
+    }
+
+    // 3. برمجة السحب باللمس أو الماوس (Pointer Events)
+    function setupSwipeEvents(card) {
+      let isDragging = false;
+      let startX = 0;
+      let currentX = 0;
+
+      card.addEventListener('pointerdown', (e) => {
+        // عدم السحب إذا كانت التفاعلات على زر اللايك
+        if (e.target.closest('.like-btn')) return;
+
+        isDragging = true;
+        startX = e.clientX;
+        card.style.transition = 'none'; // إيقاف الأنيميشن أثناء السحب المباشر
+        card.setPointerCapture(e.pointerId);
+      });
+
+      card.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+
+        currentX = e.clientX - startX;
+        
+        // تسمح بالسحب لليمين فقط (أو القليل لليسار كمرونة)
+        if (currentX > -20) {
+          const rotation = currentX * 0.08; // درجة التدوير مع الحركة
+          card.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${rotation}deg)`;
+        }
+      });
+
+      card.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const threshold = 120; // المسافة المطلوبة لإنهاء السحب
+
+        card.style.transition = 'transform 0.4s ease, opacity 0.4s ease';
+
+        if (currentX > threshold) {
+          // سحب ناجح لليمين (Fly off screen & Mark as Seen)
+          card.classList.add('swiping-out');
+          card.style.transform = `translate3d(600px, 0, 0) rotate(30deg)`;
+          card.style.opacity = '0';
+
+          setTimeout(() => {
+            card.remove();
+            markInstantAsSeen(card.dataset.id);
+            updateStackStyles();
+          }, 350);
+        } else {
+          // العودة لمكانه الطبيعي لو لم يتجاوز المسافة
+          updateStackStyles();
+        }
+
+        currentX = 0;
+      });
+    }
+
+    // 4. التفاعل والتسجيل
+    function toggleLike(e, id) {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      btn.classList.toggle('active');
+      btn.textContent = btn.classList.contains('active') ? '❤️' : '🤍';
+      console.log(`Toggled Like on Instant ID: ${id}`);
+    }
+
+    function markInstantAsSeen(id) {
+      console.log(`Instant ${id} marked as VIEWED (Delete or Hide from DB).`);
+    }
+
+    // تشغيل العرض الأول
+    renderDeck(mockInstants);
+  </script>
+</body>
+</html>
